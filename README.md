@@ -1,65 +1,70 @@
-# 🏋️ 个人健身训练规划 Agent
+# 🏋️ FitAgent —— 基于多智能体协作的 AI 健身训练与营养助手
 
-基于 **DeepSeek Function Call + LangChain4j** 的多角色健身训练规划 Agent。用户用自然语言描述身体情况与健身目标，后端经过「意图解析 → RAG 检索 → 规划 → Critic 评审 → 汇总」的流水线，生成结构化 Markdown 训练方案，并支持**分享链接 + 二维码**，他人扫码即可只读查看。
+一个基于 **DeepSeek 大模型 + LangChain4j** 的 AI 健身教练应用。用户用自然语言描述身体情况与健身目标，后端通过「**意图分类 → 意图解析 → RAG 检索 → 规划 → 评审 → 汇总**」的多智能体流水线，生成个性化训练计划与营养建议；同时提供身体指标计算、饮食记录、训练打卡等工具，支持账号登录、会话历史与分享二维码。
 
-> 无本地大模型、无向量库。DeepSeek 在线 API 提供推理与 Function Call，健身动作知识库用词法检索实现 RAG。
+> 🚀 **在线体验**：<http://47.243.8.223:8080>
 
 ---
 
 ## ✨ 核心特性
 
-- **多角色 Agent 流水线**：IntentExtractor → Planner → Critic → Summarizer，Critic 不通过时自动回传意见重规划（最多 3 次，防死循环）。
-- **Function Call 工具**：通过 Java SPI 可插拔，内置 BMI 计算、每日热量推荐两个工具。
-- **RAG 词法检索**：本地 40+ 健身动作知识库，按关键词/器械/部位打分，**硬性排除**与伤病禁忌冲突的动作。
-- **JSON Schema 强校验**：LLM 输出非法 JSON 时自动注入修正 prompt 重试。
-- **轻量状态机**：`待解析 → 规划中 → 评审中 → 已完成/失败`，非法迁移直接报错。
-- **MySQL 持久化 + Redis 会话缓存**：任务记录落库，会话上下文缓存减少重复 LLM 调用。
-- **分享 + 二维码**：前端 qrcode.js 浏览器本地生成二维码，后端不出图；分享页只读，不暴露用户原始输入。
+- **多智能体协作流水线**：5 个 Agent 分工——意图分类（闲聊 / 知识问答 / 训练规划三分类）、意图解析、规划、评审、汇总；Critic 评审不通过时自动回传意见重规划（最多 3 次，防死循环）。
+- **Function Calling 工具调用**：通过 Java SPI 可插拔注册 5 个工具，让大模型在规划时自动调用 BMI / 热量 / 代谢 / 食物营养 / 饮食汇总计算，保证数值准确、不靠模型瞎猜。
+- **RAG 检索增强**：本地健身动作库 + 食物营养库，词法检索；检索时**硬性排除**与用户伤病禁忌冲突、器械不可用的动作。
+- **JSON Schema 强校验**：LLM 输出非法 JSON 时自动注入修正 prompt 重试，保障下游拿到结构化数据。
+- **四大功能模块**：AI 对话、身体指标计算器（BMI/BMR/TDEE）、饮食工具（食物查询 + 每日记录）、训练打卡日志，顶部 Tab 一键切换。
+- **账号体系**：手机号 + 密码（BCrypt 哈希）注册登录，支持扫码登录（自建二维码握手流程）。
+- **会话管理**：会话历史分项目 / 置顶 / 重命名 / 归档 / 删除；训练方案可生成分享链接 + 二维码，他人扫码只读查看。
+- **MySQL 持久化 + Redis 会话缓存**：任务与业务数据落库，会话上下文缓存减少重复 LLM 调用（Redis 不可用自动降级，不影响主链路）。
+- **Docker 化部署**：多阶段构建（Maven 构建层 + JRE 运行层）+ Compose 编排 App / MySQL / Redis 三容器，已上线阿里云轻量应用服务器。
 
 ---
 
 ## 🧭 整体架构
 
 ```
-浏览器 ──POST /api/task/submit──▶ TaskController ──▶ TaskService
-                                                     │ 创建记录 + 生成 sessionId
-                                                     ├─▶ Redis 缓存会话上下文
-                                                     └─▶ MySQL 持久化任务记录
-                                                          │
-                                        AgentOrchestrator（@Async 后台线程）
-                                                          │
-            IntentExtractor ──▶ Planner(Function Call + RAG) ──▶ Critic ──▶ Summarizer
-            （结构化提取）      （生成一周计划，可调工具）      （评审）   （Markdown）
-                                                          │
-                                            Critic 不通过且迭代<3 时回传 Planner 重生成
+浏览器 ── POST /api/task/submit ──▶ TaskController ──▶ AgentOrchestrator（@Async 后台线程）
+                                                              │
+                                      ┌───────────────────────┴───────────────────────┐
+                                      ▼                                                   ▼
+                          ChatAgent 意图分类（CHAT / QNA / PLAN）            Redis 会话缓存 + MySQL 任务持久化
+                                      │
+                     ┌────────────────┼─────────────────┐
+                     ▼                ▼                 ▼
+                  CHAT 闲聊       QNA 知识问答        PLAN 训练规划（走完整流水线）
+                     │                │                 │
+                     ▼                ▼                 ▼
+                  直接友好回复      直接专业解答      IntentExtractorAgent 意图解析
+                                                      → ExerciseKnowledgeBase RAG 检索动作
+                                                      → PlannerAgent（Function Call）规划
+                                                      → CriticAgent 评审（不通过则重规划）
+                                                      → SummarizerAgent 输出 Markdown
 ```
 
 ### Mermaid 架构图
 
 ```mermaid
 flowchart TD
-    A[用户 / 分享者浏览器] -->|POST /api/task/submit| B[TaskController]
-    B --> C[TaskService<br/>创建任务 & 生成 sessionId]
-    C --> D[(Redis<br/>会话上下文缓存)]
-    C --> E[(MySQL<br/>任务持久化)]
-    C --> F[AgentOrchestrator<br/>@Async 后台执行]
+    A[用户浏览器] -->|登录 / 提交需求| B[Spring Boot 后端]
+    B --> C[ChatAgent<br/>意图分类: CHAT / QNA / PLAN]
+    C -->|CHAT 闲聊| D1[直接友好回复]
+    C -->|QNA 知识问答| D2[直接专业解答]
+    C -->|PLAN 训练规划| E[完整规划流水线]
 
-    subgraph Pipeline[多角色 Agent 流水线]
-        F --> G[TaskStateMachine<br/>PENDING_PARSE → PLANNING → REVIEWING]
-        G --> H[IntentExtractor Agent<br/>DeepSeek 结构化提取]
-        H --> I[Planner Agent<br/>Function Call + RAG]
-        I --> J[Critic Agent<br/>评审校验]
-        J -->|不通过 且 迭代<3| I
-        J -->|通过| K[Summarizer Agent<br/>输出 Markdown 方案]
+    subgraph Pipeline[多智能体规划流水线]
+        E --> F[IntentExtractorAgent<br/>结构化提取用户画像]
+        F --> G[ExerciseKnowledgeBase<br/>RAG 词法检索动作]
+        G --> H[PlannerAgent<br/>Function Call 规划一周计划]
+        H --> I[CriticAgent<br/>评审校验]
+        I -->|不通过 且 迭代<3| H
+        I -->|通过| J[SummarizerAgent<br/>输出 Markdown 方案]
     end
 
-    K --> E
-    K --> D
-    E -->|GET result / 分享链接| A
-
-    I -.->|ToolSpecification| L[SPI 工具<br/>BMI 计算 / 热量推荐]
-    I -.->|词法检索| M[ExerciseKnowledgeBase<br/>exercises.json]
-    E -->|GET /api/task/{id}/share| N[share.html?sessionId=xxx<br/>只读查看 + qrcode.js 二维码]
+    H -.->|ToolSpecification| K[5 个 SPI 工具<br/>BMI/热量/代谢/食物/饮食汇总]
+    G -.->|exercises.json + foods.json| L[本地知识库]
+    J --> M[(MySQL 持久化)]
+    F --> N[(Redis 会话缓存)]
+    M -->|分享链接 + 二维码| O[share.html 只读页]
 ```
 
 ---
@@ -68,46 +73,80 @@ flowchart TD
 
 | 层 | 技术 |
 |---|---|
-| 语言 / 框架 | Java 17 · Spring Boot 3.3 · Spring Data JPA · Spring Data Redis |
+| 语言 / 框架 | Java 17 · Spring Boot 3.5 · Spring MVC · Spring Data JPA · Spring Data Redis |
 | 大模型 | DeepSeek 在线 API（`deepseek-chat`，OpenAI 兼容 + Function Call） |
-| LLM SDK | LangChain4j 1.2.0（唯一大模型 SDK） |
+| LLM SDK | LangChain4j 1.2.0（OpenAI 兼容客户端指向 DeepSeek，唯一大模型 SDK） |
 | 存储 | MySQL 8 · Redis 7 |
 | JSON 校验 | networknt json-schema-validator |
-| 前端 | 原生 HTML + JS + qrcode.js + marked.js（静态页，打包进 jar） |
+| 安全 | Spring Security Crypto（BCrypt） |
+| 前端 | 原生 JavaScript + 自托管 Tailwind CSS + marked.js + qrcode.js |
+| 部署 | Docker 多阶段构建 + Docker Compose · 阿里云轻量应用服务器 |
 
 ---
 
-## 📁 包结构
+## 📱 功能模块
+
+| 模块 | 说明 |
+|---|---|
+| **AI 对话** | 多智能体生成训练计划 / 解答健身营养问题，支持会话历史、分享 |
+| **身体指标计算器** | 输入性别 / 年龄 / 身高 / 体重 / 活动量，计算 BMI（含分级）、BMR、TDEE，给出减脂 / 维持 / 增肌三档热量与宏量建议，可保存档案 |
+| **饮食工具** | 食物营养查询（热量 / 蛋白质 / 碳水 / 脂肪），每日饮食记录与全天营养汇总 |
+| **训练打卡日志** | 记录每次训练的部位 / 动作 / 重量 / 组数次数 / 感受，统计累计与本周频次 |
+
+---
+
+## 🤖 Function Calling 工具
+
+通过 Java SPI 注册（`META-INF/services/com.fitness.agent.tool.AgentTool`），大模型在规划时按需调用：
+
+| 工具名 | 作用 |
+|---|---|
+| `calculate_bmi` | 计算 BMI 及分级 |
+| `recommend_calories` | 每日目标热量推荐 |
+| `calculate_metabolism` | 计算 BMI / BMR / TDEE 与三档目标热量 |
+| `food_nutrition` | 查询某食物指定重量的营养数据 |
+| `calculate_diet_total` | 汇总一组食物的热量与三大营养素 |
+
+> 扩展新工具：实现 `AgentTool` 接口，并在 SPI 登记文件中追加一行即可自动发现。
+
+---
+
+## 📁 目录结构
 
 ```
 src/main/java/com/fitness/agent/
 ├── FitnessAgentApplication.java     # 启动类（@EnableAsync）
-├── config/                          # LangChain4j / 线程池 / 配置属性
-├── controller/TaskController.java   # 提交 / 进度 / 结果 / 分享
+├── config/                          # LangChain4j / 线程池 / 鉴权 / 配置属性
+├── controller/                      # Auth / Task / Conversation / Project /
+│                                    # BodyMetrics / Diet / WorkoutLog / FileUpload
 ├── service/
-│   ├── AgentOrchestrator.java       # 流水线编排（@Async）
-│   ├── TaskService.java             # 任务 CRUD
-│   ├── IntentExtractorAgent.java    # 意图解析
+│   ├── AgentOrchestrator.java       # 多智能体流水线编排（@Async）
+│   ├── ChatAgent.java               # 意图分类（CHAT / QNA / PLAN）+ 直接回复
+│   ├── IntentExtractorAgent.java    # 意图解析（结构化用户画像）
 │   ├── PlannerAgent.java            # 规划（Function Call + RAG）
 │   ├── CriticAgent.java             # 评审
 │   ├── SummarizerAgent.java         # Markdown 汇总
-│   ├── ExerciseKnowledgeBase.java   # 知识库加载 + 词法检索
-│   └── SessionCacheService.java     # Redis 会话缓存（容错降级）
+│   ├── ExerciseKnowledgeBase.java   # 动作知识库 + 词法检索
+│   ├── FoodCatalog.java             # 食物营养库
+│   ├── NutritionCalculator.java     # BMI/BMR/TDEE 纯计算
+│   └── ...                          # 各业务 Service / 用户数据聚合
 ├── agent/                           # JsonExtractor / JsonSchemaValidator / AgentToolCaller
 ├── statemachine/                    # TaskStatus / TaskStateMachine
-├── tool/                            # AgentTool(SPI) / BMI / 热量推荐
+├── tool/                            # AgentTool(SPI) + 5 个工具实现
 ├── model/                           # 实体 + DTO
-├── repository/TaskRepository.java
+├── repository/                      # Spring Data JPA 仓储
+├── auth/                            # 登录鉴权（UserContext / Interceptor）
 ├── exception/                       # BusinessException / GlobalExceptionHandler
 └── util/JsonUtil.java
 
 src/main/resources/
 ├── application.yml                  # 端口 / DB / Redis / DeepSeek / Agent 参数
-├── prompts.yml                      # 4 个角色 prompt + 修正模板（改文案不碰代码）
+├── prompts.yml                      # 各 Agent 提示词（改文案不碰代码）
 ├── schema/*.json                    # Profile / Plan / Critic 的 JSON Schema
 ├── data/exercises.json              # 健身动作知识库
+├── data/foods.json                  # 食物营养库
 ├── META-INF/services/...AgentTool   # SPI 工具登记
-└── static/                          # index.html / share.html / css / js
+└── static/                          # index / login / confirm / share + css + js
 ```
 
 ---
@@ -118,73 +157,75 @@ src/main/resources/
 
 - JDK 17+
 - Maven 3.6+
-- Docker（用于一键启动 MySQL + Redis；也可用本地已有的 MySQL/Redis）
+- Docker（推荐，一键启动全部中间件）
 
-### 2. 启动 MySQL + Redis
-
-```bash
-docker compose up -d
-```
-
-> 默认：MySQL `root/root123456`、库 `fitness_agent`；Redis `localhost:6379`。可在 `application.yml` 中修改。
-
-### 3. 配置 DeepSeek API Key
+### 2. 配置密钥
 
 ```bash
-# Windows (PowerShell)
-$env:DEEPSEEK_API_KEY="sk-你的key"
+# 复制环境变量模板
+cp .env.example .env
 
-# macOS / Linux
-export DEEPSEEK_API_KEY="sk-你的key"
+# 编辑 .env，填入你的 DeepSeek API Key
+DEEPSEEK_API_KEY=sk-你的key
 ```
 
-或直接修改 `src/main/resources/application.yml` 中的 `deepseek.api-key`（**不要提交到 git**）。
+> `.env` 已在 `.gitignore` 中，不会提交到 git。
 
-### 4. 启动
+### 3. 一键启动（推荐）
 
 ```bash
-mvn spring-boot:run
+docker compose up -d --build
 ```
 
-浏览器打开 <http://localhost:8080>，输入健身需求即可。
+会自动构建镜像并启动 **App + MySQL + Redis** 三个容器，浏览器打开 <http://localhost:8080>。
+
+### 4. 本地开发（只启动中间件，App 用 Maven 跑）
+
+```bash
+docker compose up -d mysql redis   # 只启动 MySQL + Redis
+mvn spring-boot:run                # 本地运行 App
+```
 
 ---
 
-## 📦 打包上线部署
+## 📦 部署上线
+
+项目已通过 Docker 部署上线，地址 <http://47.243.8.223:8080>。
 
 ```bash
-# 打包可执行 jar
-mvn clean package -DskipTests
+# 1. 服务器上准备 .env（含 DEEPSEEK_API_KEY、DB_PASSWORD）
+# 2. 构建并后台启动三容器
+docker compose up -d --build
 
-# 上传 target/fitness-training-agent-1.0.0.jar 到服务器后启动
-java -jar fitness-training-agent-1.0.0.jar
+# 3. 查看状态 / 日志
+docker compose ps
+docker compose logs -f app
 ```
 
-生产环境建议：
-
-```bash
-# 1. 配置环境变量
-export DEEPSEEK_API_KEY="sk-你的key"
-export DB_URL="jdbc:mysql://localhost:3306/fitness_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false"
-export DB_USERNAME="root"
-export DB_PASSWORD="你的密码"
-
-# 2. 后台运行
-nohup java -jar fitness-training-agent-1.0.0.jar > app.log 2>&1 &
-
-# 3. 用 Nginx 反向代理到 8080，即可通过域名访问（二维码自动用当前访问地址）
-```
+数据持久化在 Docker 数据卷（`mysql-data` / `redis-data` / `uploads-data`），`docker compose down` 不会丢数据，`down -v` 才会清空。
 
 ---
 
 ## 🔌 REST 接口
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/task/submit` | 提交健身需求，返回 `sessionId` |
-| GET | `/api/task/{sessionId}` | 查询进度（前端轮询） |
-| GET | `/api/task/{sessionId}/result` | 获取完整训练方案（创建者视角） |
-| GET | `/api/task/{sessionId}/share` | 分享只读视图（不含个人信息） |
+| 模块 | 方法 | 路径 | 说明 |
+|---|---|---|---|
+| 认证 | POST | `/api/auth/register` `/api/auth/login` | 注册 / 登录 |
+| 认证 | GET | `/api/auth/me` | 当前用户信息 |
+| 认证 | POST | `/api/auth/qr/create` · `/qr/status` · `/qr/confirm` | 扫码登录 |
+| 训练 | POST | `/api/task/submit` | 提交健身需求，返回 `sessionId` |
+| 训练 | GET | `/api/task/{sessionId}` | 查询进度（前端轮询） |
+| 训练 | GET | `/api/task/{sessionId}/result` | 获取完整训练方案 |
+| 训练 | GET | `/api/task/{sessionId}/share` | 分享只读视图（不含个人信息） |
+| 身体指标 | POST | `/api/body/calculate` | 计算 BMI/BMR/TDEE |
+| 身体指标 | GET/POST | `/api/body/profile` | 查询 / 保存身体档案 |
+| 饮食 | GET | `/api/diet/food/search?q=` | 食物营养查询 |
+| 饮食 | POST | `/api/diet/record` | 添加饮食记录 |
+| 饮食 | GET | `/api/diet/summary?date=` | 当日营养汇总 |
+| 训练打卡 | POST | `/api/workout` | 新增打卡 |
+| 训练打卡 | GET | `/api/workout/stats` | 打卡统计 |
+| 会话 | GET/POST | `/api/conversation` | 会话列表 / 新建 |
+| 项目 | GET/POST | `/api/project` | 项目分组 |
 
 提交示例：
 
@@ -196,7 +237,7 @@ curl -X POST http://localhost:8080/api/task/submit \
 
 ---
 
-## 🧪 测试用例
+## 🧪 示例：一条完整链路
 
 **输入：**
 
@@ -204,21 +245,22 @@ curl -X POST http://localhost:8080/api/task/submit \
 
 **预期链路：**
 
-1. IntentExtractor 提取：`heightCm=175`、`weightKg=90`、`gender=男`、`injuries=["膝伤"]`、`equipment=["哑铃","弹力带"]`、`daysPerWeek=4`、`goal=减脂`、`durationMinutes=45`。
-2. RAG 检索：**排除**所有标记「膝伤」的动作（深蹲、弓步、开合跳、波比跳、高抬腿、跳绳、跑步等）以及杠铃/器械类动作，保留臀桥、靠墙静蹲、站姿提踵、平板支撑、卷腹、哑铃推举等膝友好动作。
-3. Planner：可调用 `calculate_bmi`（BMI≈29.4 超重）、`recommend_calories`（减脂目标热量）计算目标，生成 4 天/周、每次 ≤45min 的减脂计划。
-4. Critic：校验无禁忌动作、强度合理、负荷循序渐进。
-5. Summarizer：输出含「训练安排 / 饮食建议 / 注意事项」的 Markdown 方案。
+1. **意图分类**：识别为「训练规划」（PLAN）。
+2. **意图解析**：提取 `heightCm=175`、`weightKg=90`、`gender=男`、`injuries=["膝伤"]`、`equipment=["哑铃","弹力带"]`、`daysPerWeek=4`、`goal=减脂`、`durationMinutes=45`。
+3. **RAG 检索**：排除所有标记「膝伤」的动作（深蹲、弓步、开合跳、波比跳等）及杠铃/器械动作，保留臀桥、站姿提踵、平板支撑等膝友好动作。
+4. **规划**：可调用 `calculate_bmi`（BMI≈29.4 超重）、`calculate_metabolism` 等工具，生成 4 天/周、每次 ≤45min 的减脂计划。
+5. **评审**：校验无禁忌动作、强度合理、负荷循序渐进。
+6. **汇总**：输出含「训练安排 / 饮食建议 / 注意事项」的 Markdown 方案。
 
 ---
 
 ## ❓ 常见问题
 
-- **启动报数据库连接失败**：先 `docker compose up -d` 启动 MySQL，确认端口 3306 未占用。
-- **提交后一直「待解析/规划中」**：检查 `DEEPSEEK_API_KEY` 是否正确、能否访问 `https://api.deepseek.com`；查看日志 `com.fitness.agent`。
-- **Redis 不可用**：项目已做容错，Redis 挂了会自动降级为纯 MySQL，不影响主链路。
+- **启动报数据库连接失败**：先 `docker compose up -d mysql`，确认 3306 端口未占用。
+- **提交后一直「规划中」**：检查 `DEEPSEEK_API_KEY` 是否正确、能否访问 `https://api.deepseek.com`；查看日志 `com.fitness.agent`。
+- **Redis 不可用**：项目已做容错，Redis 挂了自动降级为纯 MySQL，不影响主链路。
 - **想换模型 / 调温度**：改 `application.yml` 的 `deepseek.*` 或 `agent.*`；想改提示词直接改 `prompts.yml`。
-- **新增工具**：实现 `AgentTool` 接口，在 `META-INF/services/com.fitness.agent.tool.AgentTool` 中登记即可被自动发现。
+- **新增工具**：实现 `AgentTool` 接口，在 `META-INF/services/com.fitness.agent.tool.AgentTool` 中登记即可。
 
 ---
 
