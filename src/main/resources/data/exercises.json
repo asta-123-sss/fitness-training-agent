@@ -1,0 +1,49 @@
+[
+  { "id": "chest-01", "name": "俯卧撑", "category": "胸", "difficulty": 1, "equipment": [], "contraindications": ["腕伤"], "description": "双手略宽于肩撑地，身体成直线，屈肘下放后推起。" },
+  { "id": "chest-02", "name": "上斜俯卧撑", "category": "胸", "difficulty": 1, "equipment": [], "contraindications": ["腕伤"], "description": "手撑于台阶或椅子上，降低难度的俯卧撑。" },
+  { "id": "chest-03", "name": "哑铃卧推", "category": "胸", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "仰卧，双手持哑铃向上推起，感受胸部发力。" },
+  { "id": "chest-04", "name": "哑铃飞鸟", "category": "胸", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "仰卧，双臂微屈向两侧打开再合拢。" },
+  { "id": "chest-05", "name": "弹力带夹胸", "category": "胸", "difficulty": 1, "equipment": ["弹力带"], "contraindications": [], "description": "双手持弹力带于胸前，双臂向前水平夹拢。" },
+
+  { "id": "back-01", "name": "弹力带划船", "category": "背", "difficulty": 1, "equipment": ["弹力带"], "contraindications": [], "description": "固定弹力带，向后拉动，肩胛骨收紧。" },
+  { "id": "back-02", "name": "哑铃单臂划船", "category": "背", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["腰伤"], "description": "单膝跪凳支撑，单手持哑铃向上划。" },
+  { "id": "back-03", "name": "俯身哑铃飞鸟", "category": "背", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["腰伤"], "description": "俯身，双臂向两侧抬起，锻炼上背与后肩。" },
+  { "id": "back-04", "name": "超人式", "category": "背", "difficulty": 1, "equipment": [], "contraindications": [], "description": "俯卧，同时抬起对侧手臂和腿，强化下背与臀。" },
+  { "id": "back-05", "name": "弹力带下拉", "category": "背", "difficulty": 1, "equipment": ["弹力带"], "contraindications": ["肩伤"], "description": "弹力带挂高位，向下拉至胸前，锻炼背阔肌。" },
+
+  { "id": "leg-01", "name": "徒手深蹲", "category": "腿", "difficulty": 1, "equipment": [], "contraindications": ["膝伤"], "description": "双脚与肩同宽，臀部向后下蹲再站起。" },
+  { "id": "leg-02", "name": "哑铃高脚杯深蹲", "category": "腿", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["膝伤"], "description": "双手托哑铃于胸前做深蹲。" },
+  { "id": "leg-03", "name": "弓步蹲", "category": "腿", "difficulty": 2, "equipment": [], "contraindications": ["膝伤"], "description": "前后弓步下蹲，重心垂直向下。" },
+  { "id": "leg-04", "name": "侧向弓步", "category": "腿", "difficulty": 2, "equipment": [], "contraindications": ["膝伤"], "description": "向侧方跨步下蹲，锻炼大腿内侧。" },
+  { "id": "leg-05", "name": "臀桥", "category": "腿", "difficulty": 1, "equipment": [], "contraindications": [], "description": "仰卧屈膝，臀部发力向上顶起，强化臀腿。" },
+  { "id": "leg-06", "name": "哑铃罗马尼亚硬拉", "category": "腿", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["腰伤"], "description": "持哑铃屈髋俯身，臀腿后侧发力站起。" },
+  { "id": "leg-07", "name": "站姿提踵", "category": "腿", "difficulty": 1, "equipment": [], "contraindications": [], "description": "站立垫脚抬起脚跟，锻炼小腿。" },
+  { "id": "leg-08", "name": "靠墙静蹲", "category": "腿", "difficulty": 1, "equipment": [], "contraindications": [], "description": "背靠墙屈膝呈马步静止，对膝盖友好的等长训练。" },
+
+  { "id": "shoulder-01", "name": "哑铃推举", "category": "肩", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "坐姿或站姿，双手持哑铃向上推举。" },
+  { "id": "shoulder-02", "name": "哑铃侧平举", "category": "肩", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "双臂向两侧抬起至与肩同高。" },
+  { "id": "shoulder-03", "name": "哑铃前平举", "category": "肩", "difficulty": 1, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "双臂向前抬起至与肩同高。" },
+  { "id": "shoulder-04", "name": "俯身反向飞鸟", "category": "肩", "difficulty": 2, "equipment": ["哑铃"], "contraindications": ["肩伤"], "description": "俯身双臂向两侧展开，锻炼后束三角肌。" },
+  { "id": "shoulder-05", "name": "弹力带面拉", "category": "肩", "difficulty": 1, "equipment": ["弹力带"], "contraindications": ["肩伤"], "description": "弹力带拉向面部，强化肩袖与上背。" },
+
+  { "id": "core-01", "name": "平板支撑", "category": "核心", "difficulty": 1, "equipment": [], "contraindications": [], "description": "前臂撑地保持身体成直线，收紧核心。" },
+  { "id": "core-02", "name": "卷腹", "category": "核心", "difficulty": 1, "equipment": [], "contraindications": ["腰伤"], "description": "仰卧屈膝，上背离地卷起腹肌。" },
+  { "id": "core-03", "name": "俄罗斯转体", "category": "核心", "difficulty": 2, "equipment": [], "contraindications": ["腰伤"], "description": "坐姿后倾，左右转体，锻炼腹斜肌。" },
+  { "id": "core-04", "name": "死虫式", "category": "核心", "difficulty": 1, "equipment": [], "contraindications": [], "description": "仰卧，对侧手脚交替伸展，稳定核心。" },
+  { "id": "core-05", "name": "侧平板支撑", "category": "核心", "difficulty": 2, "equipment": [], "contraindications": ["肩伤"], "description": "侧身支撑，强化侧腹与肩部稳定。" },
+  { "id": "core-06", "name": "鸟狗式", "category": "核心", "difficulty": 1, "equipment": [], "contraindications": [], "description": "四点跪姿，对侧手臂和腿向前后伸展。" },
+  { "id": "core-07", "name": "仰卧举腿", "category": "核心", "difficulty": 2, "equipment": [], "contraindications": ["腰伤"], "description": "仰卧，双腿抬起再缓慢下放，锻炼下腹。" },
+
+  { "id": "cardio-01", "name": "开合跳", "category": "全身心肺", "difficulty": 1, "equipment": [], "contraindications": ["膝伤"], "description": "双脚开合跳跃，配合手臂上举。" },
+  { "id": "cardio-02", "name": "波比跳", "category": "全身心肺", "difficulty": 3, "equipment": [], "contraindications": ["膝伤", "高血压"], "description": "下蹲撑地、后跳成俯卧撑再跳起，高强度全身动作。" },
+  { "id": "cardio-03", "name": "高抬腿", "category": "全身心肺", "difficulty": 1, "equipment": [], "contraindications": ["膝伤"], "description": "原地快速交替抬膝。" },
+  { "id": "cardio-04", "name": "原地慢跑", "category": "全身心肺", "difficulty": 1, "equipment": [], "contraindications": [], "description": "原地小步慢跑，低冲击热身或有氧。" },
+  { "id": "cardio-05", "name": "跳绳", "category": "全身心肺", "difficulty": 2, "equipment": [], "contraindications": ["膝伤"], "description": "连续跳绳，高效心肺训练。" },
+  { "id": "cardio-06", "name": "台阶踏步", "category": "全身心肺", "difficulty": 1, "equipment": [], "contraindications": ["膝伤"], "description": "上下台阶，中等强度有氧。" },
+
+  { "id": "barbell-01", "name": "杠铃卧推", "category": "胸", "difficulty": 3, "equipment": ["杠铃"], "contraindications": ["肩伤"], "description": "仰卧推举杠铃，需杠铃与保护。" },
+  { "id": "barbell-02", "name": "杠铃深蹲", "category": "腿", "difficulty": 3, "equipment": ["杠铃"], "contraindications": ["膝伤", "腰伤"], "description": "颈后扛杠铃做深蹲，对膝腰压力大。" },
+  { "id": "machine-01", "name": "跑步", "category": "全身心肺", "difficulty": 1, "equipment": ["有氧"], "contraindications": ["膝伤"], "description": "户外或跑步机慢跑，冲击性有氧。" },
+  { "id": "machine-02", "name": "划船机", "category": "全身心肺", "difficulty": 2, "equipment": ["器械"], "contraindications": ["腰伤"], "description": "划船机全身拉，兼顾心肺与背部。" },
+  { "id": "machine-03", "name": "坐姿推胸机", "category": "胸", "difficulty": 1, "equipment": ["器械"], "contraindications": ["肩伤"], "description": "坐姿推胸器械，轨迹固定易上手。" }
+]

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>确认登录 - 个人健身训练规划 Agent</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="page page-narrow">
+  <header class="header">
+    <h1>🔐 确认登录</h1>
+    <p class="subtitle">在手机上确认登录电脑端</p>
+  </header>
+
+  <section class="form-card" id="loginPanel" style="display:none;">
+    <label for="phone">手机号</label>
+    <input id="phone" class="text-input" type="tel" maxlength="11" placeholder="请输入手机号">
+    <label for="password">密码</label>
+    <input id="password" class="text-input" type="password" placeholder="请输入密码">
+    <button id="loginBtn" class="primary-btn full-btn" type="button">登录并确认</button>
+  </section>
+
+  <section class="form-card" id="confirmPanel" style="display:none;">
+    <p class="confirm-text">确认在这台电脑上登录 <strong id="nickname"></strong>？</p>
+    <button id="confirmBtn" class="primary-btn full-btn" type="button">确认登录电脑端</button>
+    <button id="cancelBtn" class="ghost-btn full-btn" type="button">取消</button>
+  </section>
+
+  <div class="status-card" id="statusCard" style="display:none;">
+    <div class="spinner"></div>
+    <div id="statusText">处理中…</div>
+  </div>
+  <div class="error-card" id="errorCard" style="display:none;"></div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/confirm.js"></script>
+</body>
+</html>

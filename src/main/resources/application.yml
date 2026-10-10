@@ -1,0 +1,67 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: fitness-training-agent
+  # 引入外部提示词配置，方便修改 prompt 而无需改代码
+  config:
+    import: optional:classpath:prompts.yml
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fitness_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update          # 自动建表，演示环境足够
+    open-in-view: false
+    properties:
+      hibernate:
+        "[format_sql]": false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+  # 静态资源每次请求都向服务端校验（避免浏览器用启发式缓存加载到旧页面/旧脚本）
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
+
+# DeepSeek 在线 API（OpenAI 兼容），密钥只从环境变量读取，代码零硬编码
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  model: ${DEEPSEEK_MODEL:deepseek-chat}
+  temperature: ${DEEPSEEK_TEMPERATURE:0.3}
+  log-requests: ${DEEPSEEK_LOG_REQUESTS:false}
+
+# Agent 流水线参数
+agent:
+  max-critic-iterations: 3       # Critic 评审不通过时的最大重生成次数
+  extractor-max-retries: 3       # JSON 非法时的修正重试次数
+  retrieval-top-k: 8             # RAG 词法检索返回的动作数
+  max-tool-calls: 4              # 单次规划允许的最大工具调用轮数
+
+# 文件上传（本地磁盘存储，/uploads/** 对外只读）
+app:
+  upload-dir: ${UPLOAD_DIR:uploads}
+  upload-max-size: 10485760      # 单文件上限 10MB
+
+logging:
+  level:
+    "[com.fitness.agent]": INFO
+    "[dev.langchain4j]": INFO

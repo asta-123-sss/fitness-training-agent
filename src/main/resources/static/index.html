@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>健身规划 Agent</title>
+  <script src="/js/tailwind.js?v=1"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#2563eb' }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 移动端：100vh 会包含手机地址栏高度导致底部被裁，用 100dvh 修复 */
+    body { height: 100vh; height: 100dvh; }
+
+    /* 隐藏横向滚动条 */
+    .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+    /* 快捷场景胶囊 */
+    .chip { display: inline-flex; align-items: center; white-space: nowrap; border-radius: 999px; padding: 8px 18px; font-size: 14px; color: #4b5563; background: #f3f4f6; border: 1px solid transparent; cursor: pointer; transition: all .18s ease; }
+    .chip:hover { background: #e5e7eb; }
+    .chip-active, .chip-active:hover { background: #111827; color: #ffffff; }
+
+    /* Markdown 浅色渲染 */
+    .markdown-body { color: #1f2937; line-height: 1.75; font-size: 0.95rem; word-break: break-word; }
+    .markdown-body > *:first-child { margin-top: 0; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { color: #111827; font-weight: 700; line-height: 1.4; margin: 1.5em 0 0.6em; }
+    .markdown-body h1 { font-size: 1.5rem; padding-bottom: 0.4em; border-bottom: 1px solid #e5e7eb; }
+    .markdown-body h2 { font-size: 1.25rem; }
+    .markdown-body h3 { font-size: 1.1rem; }
+    .markdown-body h4 { font-size: 1rem; }
+    .markdown-body p { margin: 0.7em 0; }
+    .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.7em 0; }
+    .markdown-body li { margin: 0.3em 0; }
+    .markdown-body li::marker { color: #2563eb; }
+    .markdown-body strong { color: #111827; font-weight: 600; }
+    .markdown-body a { color: #2563eb; text-decoration: none; }
+    .markdown-body a:hover { text-decoration: underline; }
+    .markdown-body blockquote { border-left: 3px solid #2563eb; background: #f0f6ff; padding: 0.5em 1em; margin: 1em 0; color: #4b5563; border-radius: 0 6px 6px 0; }
+    .markdown-body code { background: #f3f4f6; color: #be123c; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.86em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .markdown-body pre { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; overflow-x: auto; margin: 1em 0; line-height: 1.6; }
+    .markdown-body pre code { background: transparent; padding: 0; color: #1f2937; font-size: 0.86em; }
+    .markdown-body table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9rem; }
+    .markdown-body th, .markdown-body td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    .markdown-body th { background: #f9fafb; color: #111827; font-weight: 600; }
+    .markdown-body hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5em 0; }
+    .markdown-body img { max-width: 100%; border-radius: 8px; }
+
+    /* 我的任务列表 */
+    .history-item { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px 14px; cursor: pointer; background: #fff; transition: border-color .18s, box-shadow .18s; }
+    .history-item:hover { border-color: #2563eb; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+    .history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .status-pill { font-size: 12px; padding: 3px 10px; border-radius: 9999px; background: #eff6ff; color: #2563eb; }
+    .status-pill.status-completed { background: #ecfdf5; color: #16a34a; }
+    .status-pill.status-failed { background: #fef2f2; color: #dc2626; }
+    .history-time { font-size: 12px; color: #9ca3af; }
+    .history-text { font-size: 14px; color: #4b5563; }
+
+    /* 历史条目：更多按钮 / 置顶 / 项目标签 / 行内重命名 */
+    .history-actions { display: flex; align-items: center; gap: 6px; }
+    .history-more {
+      display: flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border: none; border-radius: 6px;
+      background: transparent; color: #9ca3af; font-size: 18px; line-height: 1;
+      cursor: pointer; padding: 0; transition: background .15s, color .15s;
+    }
+    .history-more:hover { background: #f3f4f6; color: #374151; }
+    .pin-dot { color: #2563eb; font-size: 12px; }
+    .project-tag {
+      display: inline-flex; align-items: center; max-width: 96px;
+      font-size: 11px; color: #6b7280; background: #f3f4f6; border-radius: 999px;
+      padding: 1px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .history-rename-input {
+      width: 100%; border: 1px solid #2563eb; border-radius: 6px;
+      padding: 4px 8px; font-size: 14px; color: #4b5563; outline: none; font-family: inherit;
+    }
+
+    /* 上下文菜单 */
+    .ctx-menu {
+      position: fixed; z-index: 60; min-width: 208px;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 6px;
+    }
+    .ctx-item {
+      position: relative; display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 8px; font-size: 13px; color: #1f2430;
+      cursor: pointer; white-space: nowrap; user-select: none;
+    }
+    .ctx-item:hover { background: #f3f4f6; }
+    .ctx-arrow { margin-left: auto; color: #9ca3af; }
+    .ctx-kbd { margin-left: auto; font-size: 11px; color: #9ca3af; }
+    .ctx-danger { color: #dc2626; }
+    .ctx-danger:hover { background: #fef2f2; }
+    .ctx-divider { height: 1px; background: #f3f4f6; margin: 4px 6px; }
+    .ctx-sub {
+      display: none; position: absolute; left: 100%; top: 0;
+      min-width: 168px; background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 6px;
+    }
+    .ctx-item.has-sub:hover > .ctx-sub { display: block; }
+    .ctx-sub .ctx-item { padding: 7px 12px; }
+    .ctx-sub-projects { max-height: 240px; overflow-y: auto; }
+    .ctx-sub-footer { border-top: 1px solid #f3f4f6; margin-top: 4px; padding-top: 4px; }
+    .ctx-sub-footer .ctx-item { color: #2563eb; }
+    .ctx-new-project-input {
+      width: 100%; border: 1px solid #2563eb; border-radius: 8px;
+      padding: 6px 10px; font-size: 13px; outline: none; margin: 2px 0; font-family: inherit;
+    }
+    .ctx-empty { padding: 8px 12px; font-size: 12px; color: #9ca3af; }
+    .ctx-check { margin-left: auto; color: #2563eb; font-size: 12px; }
+
+    /* 轻提示 */
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: #111827; color: #fff; font-size: 13px; padding: 8px 16px;
+      border-radius: 999px; z-index: 100; opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .toast.show { opacity: 1; }
+
+    /* 对话输入框：高度自适应 */
+    #input { height: auto; }
+
+    /* 顶部 Tab 栏 */
+    .tab-btn {
+      position: relative; padding: 12px 16px; font-size: 14px; color: #6b7280;
+      white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color .18s, border-color .18s;
+    }
+    .tab-btn:hover { color: #111827; }
+    .tab-active, .tab-active:hover { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+    /* 表单控件 */
+    .f-input {
+      width: 100%; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff;
+      padding: 8px 12px; font-size: 14px; color: #111827; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .f-input:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+    .f-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #374151; }
+    .btn-primary {
+      border-radius: 999px; background: #111827; padding: 9px 20px; font-size: 14px;
+      font-weight: 500; color: #fff; cursor: pointer; transition: background .18s;
+      border: none; white-space: nowrap;
+    }
+    .btn-primary:hover { background: #374151; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary {
+      border-radius: 999px; border: 1px solid #e5e7eb; padding: 9px 20px; font-size: 14px;
+      font-weight: 500; color: #374151; cursor: pointer; transition: background .18s;
+      background: #fff; white-space: nowrap;
+    }
+    .btn-secondary:hover { background: #f9fafb; }
+    .card { border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; padding: 20px; }
+  </style>
+</head>
+<body class="flex flex-col overflow-hidden bg-[#fafafa] text-gray-900 antialiased">
+
+  <!-- 顶部：标题 + 登录/用户 + Tab 栏 -->
+  <header class="shrink-0 border-b border-black/5 bg-white">
+    <div class="flex h-14 items-center justify-between px-4 sm:px-6">
+      <a href="/index.html" class="text-sm font-semibold text-gray-900 sm:text-base">🏋️ 训练规划 Agent</a>
+      <div class="flex items-center gap-3">
+        <button id="loginBtn" class="hidden rounded-full bg-gray-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-gray-700">登录</button>
+        <div id="userBar" class="hidden items-center gap-3 text-sm">
+          <span id="userName" class="text-gray-700"></span>
+          <button id="logoutBtn" class="rounded-full border border-gray-200 px-3 py-1.5 text-gray-600 transition hover:bg-gray-50">退出</button>
+        </div>
+      </div>
+    </div>
+    <nav class="scrollbar-hide flex items-center gap-1 overflow-x-auto border-t border-gray-100 px-2 sm:px-4">
+      <button type="button" class="tab-btn tab-active" data-tab="chat">AI对话</button>
+      <button type="button" class="tab-btn" data-tab="body">身体指标计算器</button>
+      <button type="button" class="tab-btn" data-tab="diet">饮食工具</button>
+      <button type="button" class="tab-btn" data-tab="log">训练打卡日志</button>
+    </nav>
+  </header>
+
+  <div class="flex min-h-0 flex-1">
+
+    <!-- Tab 1：AI 对话（保留原布局） -->
+    <section id="tab-chat" class="flex min-h-0 w-full">
+
+      <!-- 左侧：任务历史 -->
+      <aside class="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-[#f4f4f5] md:flex">
+        <div class="p-4">
+          <button id="newTaskBtn" type="button" class="w-full rounded-full bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700">＋ 新任务</button>
+        </div>
+        <div id="historyCard" class="hidden min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+          <div class="px-2 pb-2 pt-1 text-xs font-medium text-gray-400">任务历史</div>
+          <div id="historyList" class="space-y-1.5"></div>
+        </div>
+      </aside>
+
+      <!-- 右侧：消息区 + 底部输入区 -->
+      <div class="flex min-w-0 flex-1 flex-col bg-[#fafafa]">
+
+        <!-- 中间：对话消息列表（唯一可滚动区域） -->
+        <main id="chatScroll" class="min-h-0 flex-1 overflow-y-auto scroll-smooth">
+          <div class="mx-auto flex min-h-full max-w-3xl flex-col px-4 py-6">
+
+            <!-- 欢迎区 -->
+            <div id="welcomeBlock" class="flex flex-1 flex-col items-center justify-center text-center">
+              <h1 class="text-[36px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[48px]">健身规划，我帮你</h1>
+              <p class="mt-4 text-base text-gray-500">描述你的身体状况与训练目标，AI 为你生成专属训练方案</p>
+
+              <div class="scrollbar-hide -mx-4 mt-9 flex max-w-full gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
+                <button class="chip chip-active shrink-0" data-text="我身高175cm，体重90kg，男，膝盖有旧伤不能深蹲和跑步，家里有哑铃和弹力带，每周能练4天，目标减脂，每次训练45分钟以内。">减脂增肌</button>
+                <button class="chip shrink-0" data-text="我想重点增肌，练力量为主，家里有哑铃和杠铃，没有伤病，每周能练3天，每次1小时，目标增肌塑形。">力量训练</button>
+                <button class="chip shrink-0" data-text="我是跑步爱好者，想提升5公里配速，同时预防膝盖受伤，每周跑4天，每次40分钟，有跑步机，目标提升耐力。">跑者专项</button>
+                <button class="chip shrink-0" data-text="我在家训练，只有弹力带和瑜伽垫，目标是塑形和保持体态，每周练3天，每次30分钟。">居家训练</button>
+              </div>
+            </div>
+
+            <!-- 消息列表 -->
+            <div id="chatList" class="space-y-6"></div>
+
+          </div>
+        </main>
+
+        <!-- 底部：输入区 -->
+        <div class="shrink-0 border-t border-gray-200/70 bg-white">
+          <div class="mx-auto max-w-3xl px-4 pb-2 pt-3">
+            <div class="rounded-3xl border border-gray-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition focus-within:border-blue-400 focus-within:shadow-[0_2px_12px_rgba(37,99,235,0.12)]">
+              <textarea id="input" rows="1"
+                placeholder="描述你的身体状况与训练目标，例如：身高175cm，体重90kg，膝盖有旧伤…"
+                class="block min-h-[44px] max-h-[200px] w-full resize-none overflow-hidden border-0 bg-transparent px-4 pb-1 pt-3 text-base leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"></textarea>
+
+              <div id="attachmentList" class="hidden flex-wrap gap-2 px-4 pb-2"></div>
+
+              <div class="flex items-center justify-between px-3 pb-2">
+                <div class="flex items-center gap-3">
+                  <div class="relative">
+                    <button id="attachToggle" type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xl leading-none text-gray-600 transition hover:bg-gray-200">+</button>
+                    <div id="attachMenu" class="absolute bottom-11 left-0 z-20 hidden w-48 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
+                      <button id="uploadBtn" type="button" class="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50">🖼️ 上传图片 / 文件</button>
+                    </div>
+                  </div>
+                  <label class="flex cursor-pointer select-none items-center gap-2">
+                    <input type="checkbox" id="allowAccess" class="peer sr-only">
+                    <span class="relative h-5 w-9 rounded-full bg-gray-300 transition after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition peer-checked:bg-blue-600 peer-checked:after:translate-x-4"></span>
+                    <span class="hidden text-xs text-gray-500 sm:inline">允许完全访问</span>
+                  </label>
+                </div>
+                <input type="file" id="fileInput" accept="image/*,.txt,.md,.csv,.json" multiple class="hidden">
+                <div class="flex items-center gap-2">
+                  <select id="modelSelect" class="hidden rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 focus:border-blue-500 focus:outline-none sm:block">
+                    <option value="deepseek-chat">DeepSeek-V3</option>
+                  </select>
+                  <button id="submitBtn" type="button" class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    <svg id="sendIcon" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                    <svg id="sendSpinner" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="py-1 text-center text-xs text-gray-400">AI 生成内容仅供参考，请结合自身情况调整</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Tab 2：身体指标计算器 -->
+    <section id="tab-body" class="hidden min-h-0 w-full overflow-y-auto bg-[#fafafa]">
+      <div class="mx-auto max-w-3xl px-4 py-8">
+        <h2 class="text-2xl font-bold text-gray-900">身体指标计算器</h2>
+        <p class="mt-1 text-sm text-gray-500">基于 Mifflin-St Jeor 公式计算 BMI、基础代谢 BMR 与每日总消耗 TDEE。</p>
+
+        <div class="card mt-6">
+          <form id="bodyForm" class="grid grid-cols-1 gap-4 sm:grid-cols-2" onsubmit="return false;">
+            <div>
+              <label for="bodyGender" class="f-label">性别</label>
+              <select id="bodyGender" class="f-input">
+                <option value="男">男</option>
+                <option value="女">女</option>
+              </select>
+            </div>
+            <div>
+              <label for="bodyAge" class="f-label">年龄（岁）</label>
+              <input id="bodyAge" type="number" min="1" max="120" placeholder="如 30" class="f-input">
+            </div>
+            <div>
+              <label for="bodyHeight" class="f-label">身高（cm）</label>
+              <input id="bodyHeight" type="number" min="80" max="250" placeholder="如 175" class="f-input">
+            </div>
+            <div>
+              <label for="bodyWeight" class="f-label">体重（kg）</label>
+              <input id="bodyWeight" type="number" min="20" max="300" step="0.1" placeholder="如 70" class="f-input">
+            </div>
+            <div>
+              <label for="bodyActivity" class="f-label">日常活动量</label>
+              <select id="bodyActivity" class="f-input">
+                <option value="久坐">久坐（几乎不运动）</option>
+                <option value="轻度" selected>轻度（每周 1-3 次）</option>
+                <option value="中度">中度（每周 3-5 次）</option>
+                <option value="高度">高度（每周 6-7 次）</option>
+                <option value="极高">极高（体力劳动 / 每天高强度）</option>
+              </select>
+            </div>
+            <div>
+              <label for="bodyGoal" class="f-label">目标</label>
+              <select id="bodyGoal" class="f-input">
+                <option value="减脂">减脂</option>
+                <option value="维持" selected>维持</option>
+                <option value="增肌">增肌</option>
+              </select>
+            </div>
+            <div class="flex items-end gap-3 sm:col-span-2">
+              <button id="bodyCalcBtn" type="button" class="btn-primary">计算</button>
+              <button id="bodySaveBtn" type="button" class="btn-secondary">保存到档案</button>
+            </div>
+          </form>
+
+          <div id="bodyResult" class="mt-6 hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3：饮食工具 -->
+    <section id="tab-diet" class="hidden min-h-0 w-full overflow-y-auto bg-[#fafafa]">
+      <div class="mx-auto max-w-3xl px-4 py-8">
+        <h2 class="text-2xl font-bold text-gray-900">饮食工具</h2>
+        <p class="mt-1 text-sm text-gray-500">查询食物营养，记录每日饮食并与目标热量对比。</p>
+
+        <!-- ① 食物热量查询 -->
+        <div class="card mt-6">
+          <h3 class="font-semibold text-gray-900">① 食物热量查询</h3>
+          <div class="mt-3 flex gap-2">
+            <input id="foodQuery" type="text" placeholder="输入食物名称，如：鸡胸肉" class="f-input">
+            <button id="foodSearchBtn" type="button" class="btn-primary shrink-0">搜索</button>
+          </div>
+          <div id="foodSearchResults" class="mt-3"></div>
+          <div id="foodDetail" class="mt-4 hidden rounded-xl border border-gray-100 bg-gray-50 p-4">
+            <div class="flex flex-wrap items-end gap-3">
+              <div>
+                <label for="foodWeight" class="mb-1 block text-xs text-gray-500">重量（克）</label>
+                <input id="foodWeight" type="number" min="1" value="100" class="f-input w-28">
+              </div>
+              <button id="foodCalcBtn" type="button" class="btn-primary">计算营养</button>
+            </div>
+            <div id="foodNutrition" class="mt-3"></div>
+          </div>
+        </div>
+
+        <!-- ② 每日饮食记录 -->
+        <div class="card mt-6">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="font-semibold text-gray-900">② 每日饮食记录</h3>
+            <input id="dietDate" type="date" class="f-input w-auto">
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <select id="dietMeal" class="f-input">
+              <option value="早餐">早餐</option>
+              <option value="午餐">午餐</option>
+              <option value="晚餐">晚餐</option>
+              <option value="加餐">加餐</option>
+            </select>
+            <input id="dietFoodName" type="text" placeholder="食物名" class="f-input">
+            <input id="dietWeight" type="number" min="1" placeholder="克" class="f-input">
+            <button id="dietAddBtn" type="button" class="btn-primary">添加</button>
+          </div>
+          <div id="dietSummary" class="mt-5"></div>
+          <div id="dietRecords" class="mt-4"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4：训练打卡日志 -->
+    <section id="tab-log" class="hidden min-h-0 w-full overflow-y-auto bg-[#fafafa]">
+      <div class="mx-auto max-w-3xl px-4 py-8">
+        <h2 class="text-2xl font-bold text-gray-900">训练打卡日志</h2>
+        <p class="mt-1 text-sm text-gray-500">记录每次训练，追踪训练频次。</p>
+
+        <div id="workoutStats" class="mt-6"></div>
+
+        <div class="card mt-6">
+          <h3 class="font-semibold text-gray-900">新增训练记录</h3>
+          <form id="workoutForm" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4" onsubmit="return false;">
+            <div>
+              <label for="workoutDate" class="f-label">日期</label>
+              <input id="workoutDate" type="date" class="f-input">
+            </div>
+            <div>
+              <label for="workoutBodyPart" class="f-label">部位</label>
+              <select id="workoutBodyPart" class="f-input">
+                <option>胸</option><option>背</option><option>腿</option><option>肩</option>
+                <option>手臂</option><option>核心</option><option>全身</option><option>有氧</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label for="workoutExercise" class="f-label">动作</label>
+              <input id="workoutExercise" type="text" placeholder="如 卧推" class="f-input">
+            </div>
+            <div>
+              <label for="workoutWeight" class="f-label">重量（kg）</label>
+              <input id="workoutWeight" type="number" min="0" step="0.5" placeholder="可空" class="f-input">
+            </div>
+            <div>
+              <label for="workoutSets" class="f-label">组数</label>
+              <input id="workoutSets" type="number" min="1" placeholder="可空" class="f-input">
+            </div>
+            <div class="col-span-2">
+              <label for="workoutReps" class="f-label">次数</label>
+              <input id="workoutReps" type="text" placeholder="如 12 或 8-12" class="f-input">
+            </div>
+            <div class="col-span-2 sm:col-span-4">
+              <label for="workoutFeeling" class="f-label">训练感受</label>
+              <input id="workoutFeeling" type="text" placeholder="如 状态不错 / 膝盖略酸" class="f-input">
+            </div>
+            <div class="col-span-2 sm:col-span-4">
+              <button id="workoutSaveBtn" type="button" class="btn-primary">保存打卡</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="workoutList" class="mt-6"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/js/marked.min.js?v=2"></script>
+  <script src="/js/auth.js?v=2"></script>
+  <script src="/js/tabs.js?v=1"></script>
+  <script src="/js/app.js?v=11"></script>
+  <script src="/js/calculator.js?v=1"></script>
+  <script src="/js/diet.js?v=1"></script>
+  <script src="/js/log.js?v=1"></script>
+</body>
+</html>

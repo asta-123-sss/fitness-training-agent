@@ -1,0 +1,11 @@
+target/
+uploads/
+.git/
+.idea/
+.vscode/
+*.log
+.env
+.env.example
+Dockerfile
+docker-compose.yml
+README.md

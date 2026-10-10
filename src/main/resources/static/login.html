@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 个人健身训练规划 Agent</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="page page-narrow">
+  <header class="header">
+    <h1>🏋️ 个人健身训练规划 Agent</h1>
+    <p class="subtitle">登录后开始你的专属训练规划</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="login" type="button">密码登录</button>
+    <button class="tab" data-tab="register" type="button">注册</button>
+    <button class="tab" data-tab="qr" type="button">扫码登录</button>
+  </div>
+
+  <section class="form-card tab-panel" id="panel-login">
+    <label for="loginPhone">手机号</label>
+    <input id="loginPhone" class="text-input" type="tel" maxlength="11" placeholder="请输入手机号">
+    <label for="loginPassword">密码</label>
+    <input id="loginPassword" class="text-input" type="password" placeholder="请输入密码">
+    <button id="loginBtn" class="primary-btn full-btn" type="button">登录</button>
+  </section>
+
+  <section class="form-card tab-panel" id="panel-register" style="display:none;">
+    <label for="regPhone">手机号</label>
+    <input id="regPhone" class="text-input" type="tel" maxlength="11" placeholder="请输入手机号">
+    <label for="regPassword">密码</label>
+    <input id="regPassword" class="text-input" type="password" placeholder="6-32 位密码">
+    <label for="regNickname">昵称（可选）</label>
+    <input id="regNickname" class="text-input" type="text" placeholder="不填默认取手机尾号">
+    <button id="registerBtn" class="primary-btn full-btn" type="button">注册并登录</button>
+  </section>
+
+  <section class="form-card tab-panel" id="panel-qr" style="display:none;">
+    <div class="qr-box">
+      <div id="qrCode"></div>
+      <p id="qrHint">请使用手机浏览器扫描二维码</p>
+    </div>
+    <button id="qrRefreshBtn" class="ghost-btn full-btn" type="button">刷新二维码</button>
+  </section>
+
+  <div class="error-card" id="errorCard" style="display:none;"></div>
+</div>
+
+<script src="/js/qrcode.min.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

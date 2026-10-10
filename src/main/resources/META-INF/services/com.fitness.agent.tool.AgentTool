@@ -1,0 +1,5 @@
+com.fitness.agent.tool.BmiCalculatorTool
+com.fitness.agent.tool.CalorieRecommendationTool
+com.fitness.agent.tool.MetabolismCalculatorTool
+com.fitness.agent.tool.FoodNutritionTool
+com.fitness.agent.tool.DietSummaryTool
